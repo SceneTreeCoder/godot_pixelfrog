@@ -17,6 +17,8 @@ var lander:Polygon2D
 var _points:PackedVector2Array = []
 var is_bouncing_back = false
 var _rotation_idx:int
+var _stack_idx: int = -1
+
 var was_removed := false
 
 var landed = false
@@ -26,8 +28,13 @@ func _exit_tree() -> void:
 func _enter_tree() -> void:
 	was_removed = false
 
+var seq_no = 0
+
+static var _seq_no = 1;
 
 func _init(cb:Callable):
+	_seq_no += 1
+	seq_no = _seq_no
 	lander = Polygon2D.new()
 	var sizes:Array[float] = [PI*0.25, PI*0.5, PI*0.75]
 	var size = randi_range(0, 0);
@@ -35,7 +42,7 @@ func _init(cb:Callable):
 	var start = randi_range(0, NPOINTS);
 	_rotation_idx = start
 	var a = float(start) * PI * 2.0 / float(NPOINTS)
-
+	_stack_idx = -1
 	
 	
 	var N = NPOINTS
