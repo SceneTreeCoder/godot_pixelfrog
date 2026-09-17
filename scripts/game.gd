@@ -68,9 +68,9 @@ func timeout():
 	 
 	
 	_stacks_rotation = (_stacks_rotation + move + NPOINTS)%NPOINTS
-	var labels = get_children().filter(func(v): return v is Label)
-	for i in range(NPOINTS):
-		labels[i].text = str((_stacks_rotation + i)%NPOINTS)
+	#var labels = get_children().filter(func(v): return v is Label)
+	#for i in range(NPOINTS):
+	#	labels[i].text = str((_stacks_rotation + i)%NPOINTS)
 	
 	var tween = stationary_landers_container.create_tween()
 	tween.tween_property(stationary_landers_container,"rotation",stationary_landers_container.rotation + move*PI*0.25,0.09)
@@ -83,18 +83,6 @@ func _ready() -> void:
 	var planet_instance = planet.instantiate()
 	add_child(planet_instance)
 	var half = PI/float(NPOINTS)
-	for i in range(NPOINTS):
-		var lbl := Label.new()
-		lbl.add_theme_color_override("font_color",Color.BLACK)
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		
-		var a = PI*float(i)/float(NPOINTS)*2 + half
-		lbl.position = Vector2(sin(a)*110-10,cos(a)*110-10)
-		lbl.text = str(i)
-		lbl.z_index = 2
-		
-		add_child(lbl)
 	timer = Timer.new()
 	add_child(timer)
 	timer.autostart = true
@@ -105,6 +93,23 @@ func _ready() -> void:
 	
 	moving_landers_container = Node2D.new()
 	add_child(moving_landers_container)
+	
+	var canvas:CanvasLayer  =CanvasLayer.new()
+	var next_color_lander:Array[Lander] = []
+	next_color_lander.resize(GlobalState.COLORS_QUEUE_SIZE)
+	
+	for i in range(next_color_lander.size()):
+		var lander = Lander.new(func(_lander): pass, 0.01 + float(i)/GlobalState.COLORS_QUEUE_SIZE*PI*2.0)
+		lander.state = Lander.LanderState.PREVIEW
+		lander.position = Vector2(180, 180)
+		next_color_lander[i] = lander
+		canvas.add_child(lander)
+	
+	GlobalState.instance.next_color_changed.connect(func(colors): for j in range(GlobalState.COLORS_QUEUE_SIZE): next_color_lander[GlobalState.COLORS_QUEUE_SIZE-j-1].tween_color_to = colors[j])
+	
+	
+	add_child(canvas)
+	
 	
 	_spawn_lander()
 

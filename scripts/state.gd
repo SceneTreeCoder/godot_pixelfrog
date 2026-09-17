@@ -1,4 +1,31 @@
 extends Node
 class_name GlobalState
 
+const COLORS:Array[Color] = [\
+	Color.GREEN, Color.BLUE, Color.RED, Color.GOLD, Color.AQUA, Color.CHOCOLATE, Color.DARK_SLATE_GRAY
+]
+const COLORS_QUEUE_SIZE = 8
+static var colors_queue:Array[Color] = []
 static var is_tweening_planet := false
+
+signal next_color_changed(c:Array[Color])
+
+static var _instance:GlobalState
+static var instance:
+	get:
+		if _instance == null:
+			_instance = GlobalState.new()
+		return _instance
+	set(v):
+		pass
+
+static func fill_color_que():
+	while colors_queue.size()<COLORS_QUEUE_SIZE:
+		colors_queue.append(COLORS.pick_random())
+
+static func pick_color():
+	fill_color_que()
+	var r_color = colors_queue.pop_front()
+	fill_color_que()
+	instance.next_color_changed.emit(colors_queue)
+	return r_color
