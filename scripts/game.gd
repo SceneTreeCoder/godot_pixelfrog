@@ -13,7 +13,7 @@ const SPAWN_DELAY:float = 3.5
 var stationary_landers_container: Node2D
 var moving_landers_container: Node2D
 var total_move := 0
-
+var canvas:CanvasLayer;
 var paused:bool = false:
 	set(v):
 		GlobalState.paused = v
@@ -85,11 +85,8 @@ func timeout():
 	tween.play()
 
 func _ready() -> void:
-	
-	
 	var planet_instance = planet.instantiate()
-	add_child(planet_instance)
-	var half = PI/float(NPOINTS)
+	add_child(planet_instance)	
 	timer = Timer.new()
 	add_child(timer)
 	timer.autostart = true
@@ -101,7 +98,7 @@ func _ready() -> void:
 	moving_landers_container = Node2D.new()
 	add_child(moving_landers_container)
 	
-	var canvas:CanvasLayer  =CanvasLayer.new()
+	canvas = CanvasLayer.new()
 	var next_color_lander:Array[Lander] = []
 	next_color_lander.resize(GlobalState.COLORS_QUEUE_SIZE)
 	
@@ -125,9 +122,31 @@ func _process(dt: float) -> void:
 	if Input.is_action_just_pressed("action"):
 		paused = !paused;
 	
-	if paused:
+	if GlobalState.is_game_over:
+		if Input.is_action_just_pressed("action"):
+			var res = load("res://scenes/game.tscn")
+			var parent = get_parent()
+			var gs:GlobalState = GlobalState.instance;
+			for c in gs.next_color_changed.get_connections():
+				gs.next_color_changed.disconnect(c["callable"])
+			
+			
+			queue_free()
+			var timergs := Timer.new()
+			timergs.one_shot = true
+			var resetf = func():
+				GlobalState.reset()
+				parent.add_child(res.instantiate())
+			
+			timergs.timeout.connect(resetf.bind())
+			parent.add_child(timergs)
+			timergs.start(0.1)
+			
 		return
 		
+	if paused:
+		return
+	
 	var move = 0
 	if Input.is_action_just_pressed("ui_left"):
 		move = -1
@@ -147,6 +166,7 @@ func _process(dt: float) -> void:
 		_spawn_lander()
 
 func _on_landers_collide_area(lander:Lander):
+	
 	if GlobalState.is_tweening_planet:
 		return
 	if lander.state != Lander.LanderState.FALLING:
@@ -165,6 +185,14 @@ func _add_to_stack(lander:Lander):
 	var idx:int = (_stacks_rotation + lander._rotation_idx + NPOINTS)%NPOINTS
 	
 	lander._stack_idx = idx
+	
+	var on_this_stack = stationary_landers.filter(func(a):\
+		return a._stack_idx == idx\
+	).size()
+	
+	if on_this_stack and on_this_stack > 7:
+		show_game_over()
+	
 	lander.landed = true
 	lander.state = Lander.LanderState.STATIONARY
 	
@@ -238,8 +266,38 @@ func _on_lander_hit_planet(lander:Lander):
 		return
 	_spawn_lander()
 
+func show_game_over() -> void:
+	
+	GlobalState.is_game_over = true
+	var panel = Panel.new()
+	
+	panel.grow_horizontal = Control.GrowDirection.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GrowDirection.GROW_DIRECTION_BOTH
+	panel.size = Vector2(320,200)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER,Control.PRESET_MODE_KEEP_SIZE, 20)
+	var game_over_label := Label.new()
+	game_over_label.text = "GAME OVER"
+	game_over_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	game_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	game_over_label.size = panel.size * 1
+	game_over_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER,Control.PRESET_MODE_KEEP_SIZE, 20)
+	
+	panel.add_child(game_over_label)	
+	canvas.add_child(panel)
+
 func _spawn_lander() -> void:
+	if GlobalState.is_game_over:
+		return
+	var n_falling_landers = landers.size()
+	if n_falling_landers > 1:
+		return
+	if n_falling_landers + stationary_landers.size() > GlobalState.MAX_SHAPES:
+		show_game_over()
+		return
 	seconds_from_last_spawn = 0
 	var lander = Lander.new(_on_landers_collide_area)
 	lander.hit_planet.connect(_on_lander_hit_planet)
 	moving_landers_container.call_deferred("add_child", lander)
+	
+	
+	

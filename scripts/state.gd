@@ -1,5 +1,6 @@
 extends Node
 class_name GlobalState
+const MAX_SHAPES:int = 25
 
 const COLORS:Array[Color] = [\
 	Color.GREEN, Color.BLUE, Color.RED, Color.GOLD, Color.AQUA, Color.CHOCOLATE, Color.DARK_SLATE_GRAY
@@ -19,6 +20,15 @@ static var instance:
 	set(v):
 		pass
 
+static func reset():
+	_instance.queue_free()
+	_instance = GlobalState.new()
+	colors_queue = []
+	paused = false
+	is_game_over = false
+	is_tweening_planet = false
+	Lander._seq_no = 1
+
 static func fill_color_que():
 	while colors_queue.size()<COLORS_QUEUE_SIZE:
 		colors_queue.append(COLORS.pick_random())
@@ -31,3 +41,4 @@ static func pick_color():
 	return r_color
 
 static var paused := false
+static var is_game_over := false

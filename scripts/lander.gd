@@ -119,8 +119,6 @@ func _hit_other(_arr:Area2D, cb:Callable):
 	cb.call(self)
 
 func _physics_process(dt:float) -> void:
-	if paused:
-		return
 	match (state):
 		LanderState.FALLING:
 			_process_falling(dt)
@@ -140,10 +138,12 @@ func _process_preview(dt:float):
 
 
 func setBounceBack(v:bool):
+	area.monitoring = !v
+	area.monitorable = !v
 	is_bouncing_back = v
 
 func _process_falling(dt:float):
-	if is_bouncing_back:
+	if is_bouncing_back or GlobalState.is_game_over:
 		return
 	var current_scale = polygon.scale.x - 0.5*dt
 	
