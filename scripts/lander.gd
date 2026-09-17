@@ -3,7 +3,9 @@ class_name Lander
 
 const R = 540.0
 const NPOINTS = 8
-
+const COLORS:Array[Color] = [\
+	Color.GREEN, Color.BLUE, Color.RED, Color.GOLD, Color.AQUA, Color.CHOCOLATE, Color.DARK_SLATE_GRAY
+]
 enum LanderState { FALLING, STATIONARY}
 
 signal hit_planet(v:Lander)
@@ -59,7 +61,7 @@ func _init(cb:Callable):
 		return points_inner
 	
 	lander.polygon = calc.call(R,R*1.1+2)
-	lander.color = [Color.GREEN, Color.BLUE, Color.RED].pick_random()
+	lander.color = COLORS.pick_random()
 	area = Area2D.new()
 	area.monitoring = true
 	

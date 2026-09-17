@@ -137,7 +137,6 @@ func _on_landers_collide_area(lander:Lander):
 	if lander.state != Lander.LanderState.FALLING:
 		return
 	
-			
 	lander.state = lander.LanderState.STATIONARY
 	
 	if _add_to_stack(lander) == false:
@@ -164,23 +163,21 @@ func _add_to_stack(lander:Lander):
 	var foundmatch = false
 	if stack.size() >= 3:
 		var color = lander.polygon.color
+		var html_color = color.to_html(true)
 		var i = stack.size() - 1
 		var c := 0
 		for j in range(0, 3):
-			if i - j > stack.size():
+			if i - j < 0 or i - j >= stack.size():
 				break
-			if i - j < 0:
-				break
-			var colorInStack :Color = stack[i-1].polygon.color
-			if colorInStack.to_html(true) == color.to_html(true):
+			var colorInStack:Color = stack[i-j].polygon.color
+			if colorInStack.to_html(true) == html_color:
 				c+=1
 				foundmatch = true
 			else:
 				foundmatch = false
-				break		
+				break
 		if foundmatch and c>=3:
 			call_deferred("_tween_out_matched",lander._stack_idx, lander.seq_no)
-
 	return true
 
 func _tween_out_matched(idx:int, seq_no:int):
@@ -201,19 +198,14 @@ func _get_lander_by_seq_no(seq_no:int) -> Lander:
 	return null
 	
 
-func _tween_out_matched_delayed(idx:int, timer:Timer, seq_no:int):
-	timer.queue_free()
+func _tween_out_matched_delayed(idx:int, ptimer:Timer, seq_no:int):
+	ptimer.queue_free()
 	
 	var originlander = _get_lander_by_seq_no(seq_no)
 	
-	var stack = stationary_landers.filter(func(v:Lander): return v._stack_idx == idx and v.state == Lander.LanderState.STATIONARY)
+	var stack = stationary_landers.filter(func(v:Lander): return v._stack_idx == idx)
 	if stack.find_custom(func(v:Lander): return v.seq_no == seq_no) < 0:
 		stack.append(originlander)
-	var comparator = func (a:Lander,b:Lander):
-		return a.seq_no < b.seq_no
-		
-	stack.sort_custom(comparator)
-	
 	if stack.size()<3:
 		return
 	var sidx = stack.size()-1
