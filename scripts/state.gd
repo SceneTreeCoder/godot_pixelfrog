@@ -29,3 +29,5 @@ static func pick_color():
 	fill_color_que()
 	instance.next_color_changed.emit(colors_queue)
 	return r_color
+
+static var paused := false

@@ -39,6 +39,13 @@ var seq_no = 0
 var _a: float = 0
 static var _seq_no = 1
 
+
+var paused:bool = false:
+	set(v):
+		GlobalState.paused = v
+	get:
+		return GlobalState.paused
+
 var _tween_color_to:Color
 var tween_color_to:Color:
 	get:
@@ -112,7 +119,8 @@ func _hit_other(_arr:Area2D, cb:Callable):
 	cb.call(self)
 
 func _physics_process(dt:float) -> void:
-	
+	if paused:
+		return
 	match (state):
 		LanderState.FALLING:
 			_process_falling(dt)

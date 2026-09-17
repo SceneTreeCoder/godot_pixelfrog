@@ -12,7 +12,14 @@ const SPAWN_DELAY:float = 3.5
 
 var stationary_landers_container: Node2D
 var moving_landers_container: Node2D
+var total_move := 0
 
+var paused:bool = false:
+	set(v):
+		GlobalState.paused = v
+	get:
+		return GlobalState.paused
+ 
 var landers: Array[Lander]:
 	get:
 		return moving_landers_container.get_children().filter(func(v): return v is Lander)
@@ -113,11 +120,14 @@ func _ready() -> void:
 	
 	_spawn_lander()
 
-var total_move := 0
-
 func _process(dt: float) -> void:
 	
+	if Input.is_action_just_pressed("action"):
+		paused = !paused;
 	
+	if paused:
+		return
+		
 	var move = 0
 	if Input.is_action_just_pressed("ui_left"):
 		move = -1
