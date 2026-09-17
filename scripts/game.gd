@@ -155,6 +155,9 @@ func _add_to_stack(lander:Lander):
 	lander.state = Lander.LanderState.STATIONARY
 	
 	var stack = stationary_landers.filter(func(v:Lander): return v._stack_idx == idx and v.state == Lander.LanderState.STATIONARY)
+	var seq_no :int = lander.seq_no
+	if stack.find_custom(func(v:Lander): return v.seq_no == seq_no) < 0:
+		stack.append(lander)
 	if not lander in stack:
 		stack.append(lander)
 	
@@ -188,6 +191,7 @@ func _tween_out_matched(idx:int, seq_no:int):
 	delay_timer.start(0.1)
 
 func _get_lander_by_seq_no(seq_no:int) -> Lander:
+
 	var idx:int = stationary_landers.find_custom(func(v:Lander):return v.seq_no == seq_no)
 	if (idx>=0):
 		return stationary_landers[idx]
@@ -203,7 +207,7 @@ func _tween_out_matched_delayed(idx:int, timer:Timer, seq_no:int):
 	var originlander = _get_lander_by_seq_no(seq_no)
 	
 	var stack = stationary_landers.filter(func(v:Lander): return v._stack_idx == idx and v.state == Lander.LanderState.STATIONARY)
-	if not originlander in stack:
+	if stack.find_custom(func(v:Lander): return v.seq_no == seq_no) < 0:
 		stack.append(originlander)
 	var comparator = func (a:Lander,b:Lander):
 		return a.seq_no < b.seq_no
