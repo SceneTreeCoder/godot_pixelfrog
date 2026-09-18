@@ -85,8 +85,30 @@ func timeout():
 	tween.play()
 
 func _ready() -> void:
-	var planet_instance = planet.instantiate()
-	add_child(planet_instance)	
+	var planet_container: Node2D = Node2D.new()
+	var poly = Polygon2D.new()
+	var harmonics = Harmonics.generate_harmonic_properties(20)
+	poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 110)
+	planet_container.add_child(poly)
+	poly = Polygon2D.new()
+	poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 90)
+	poly.color = Color.LIGHT_GRAY
+	planet_container.add_child(poly)
+	add_child(planet_container)
+	var tween:Tween = planet_container.create_tween()
+	var fCbFinished = func():		
+		var new_scale = Vector2.ONE
+		if planet_container.scale.x<=0.99:
+			new_scale = new_scale * 1.05		
+		tween.stop()		
+		tween.tween_property(planet_container,"scale", new_scale, 1)
+		tween.play()
+	
+		
+	var newScale = planet_container.scale.x * 1.05
+	tween.tween_property(planet_container,"scale", planet_container.scale*newScale,1)	
+	tween.play()
+	tween.finished.connect(fCbFinished)
 	timer = Timer.new()
 	add_child(timer)
 	timer.autostart = true
