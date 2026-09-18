@@ -3,6 +3,8 @@ extends Node2D
 const planet = preload("res://scenes/planet.tscn")
 
 var seconds_from_last_spawn := 0.0
+const SPAWN_AFTER_SECONDS = 2.5
+var next_color_lander:Array[Lander] = []
 
 const R = 420.0
 const NPOINTS = 8
@@ -72,12 +74,7 @@ func timeout():
 		return
 		
 	GlobalState.is_tweening_planet = true
-	 
-	
 	_stacks_rotation = (_stacks_rotation + move + NPOINTS)%NPOINTS
-	#var labels = get_children().filter(func(v): return v is Label)
-	#for i in range(NPOINTS):
-	#	labels[i].text = str((_stacks_rotation + i)%NPOINTS)
 	
 	var tween = stationary_landers_container.create_tween()
 	tween.tween_property(stationary_landers_container,"rotation",stationary_landers_container.rotation + move*PI*0.25,0.09)
@@ -120,18 +117,30 @@ func _ready() -> void:
 	moving_landers_container = Node2D.new()
 	add_child(moving_landers_container)
 	
-	canvas = CanvasLayer.new()
-	var next_color_lander:Array[Lander] = []
-	next_color_lander.resize(GlobalState.COLORS_QUEUE_SIZE)
+	canvas = CanvasLayer.new()	
+	var n_segments = NPOINTS
+	next_color_lander.resize(GlobalState.COLORS_QUEUE_SIZE*n_segments)
 	
 	for i in range(next_color_lander.size()):
 		var lander = Lander.new(func(_lander): pass, 0.01 + float(i)/GlobalState.COLORS_QUEUE_SIZE*PI*2.0)
 		lander.state = Lander.LanderState.PREVIEW
-		lander.position = Vector2(180, 180)
+		lander.position = Vector2(320,320)
 		next_color_lander[i] = lander
 		canvas.add_child(lander)
 	
-	GlobalState.instance.next_color_changed.connect(func(colors): for j in range(GlobalState.COLORS_QUEUE_SIZE): next_color_lander[GlobalState.COLORS_QUEUE_SIZE-j-1].tween_color_to = colors[j])
+	var on_color_change = func (colors):
+		if GlobalState.in_on_color_chabge:
+			return
+		GlobalState.in_on_color_chabge = true
+		
+		for j in range(GlobalState.COLORS_QUEUE_SIZE):
+			for p in range(n_segments):
+				next_color_lander[j*n_segments+p-1].tween_color_to = colors[j]
+		
+		GlobalState.in_on_color_chabge = false
+		
+	
+	GlobalState.instance.next_color_changed.connect(on_color_change.bind())
 	
 	
 	add_child(canvas)
@@ -184,7 +193,13 @@ func _process(dt: float) -> void:
 	total_move+= move
 	
 	seconds_from_last_spawn+=dt
-	if seconds_from_last_spawn >= SPAWN_DELAY and landers.size() <3:
+	
+	var part_time = SPAWN_AFTER_SECONDS / NPOINTS
+	
+	for i in range(0, NPOINTS):
+		next_color_lander[i].visible = seconds_from_last_spawn >= part_time*float(i)
+	
+	if seconds_from_last_spawn >= SPAWN_AFTER_SECONDS and landers.size() <3:
 		_spawn_lander()
 
 func _on_landers_collide_area(lander:Lander):

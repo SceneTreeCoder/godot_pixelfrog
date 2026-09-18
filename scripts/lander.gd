@@ -8,7 +8,8 @@ const PLANET_HIT_RADIUS = 148
 enum LanderState {\
 	FALLING,\
 	STATIONARY,\
-	PREVIEW\
+	PREVIEW,\
+	MORPHING,\
 }
 
 signal hit_planet(v:Lander)
@@ -52,11 +53,11 @@ var tween_color_to:Color:
 		return _tween_color_to
 	set(c):
 		var t:Tween = lander.create_tween()
-		t.tween_property(lander,"modulate",c,0.3)
+		t.tween_property(lander,"modulate",c,0.3 + 0.04*seq_no)
 		t.play()
 		_tween_color_to = c
 
-func _init(cb:Callable, p_start:float = 0.0):
+func _init(cb:Callable = func(_lander): pass, p_start:float = 0.0):
 	_seq_no += 1
 	seq_no = _seq_no
 	lander = Polygon2D.new()
@@ -102,10 +103,14 @@ func _init(cb:Callable, p_start:float = 0.0):
 	add_child(area)
 
 func _on_state_changed(to:LanderState, _from:LanderState):
-	if to == LanderState.PREVIEW:
-		collision_polygon.call_deferred("queue_free")
-		collision_polygon = null
-		lander.color = Color.WHITE
+	match(to):
+		LanderState.PREVIEW:
+			collision_polygon.call_deferred("queue_free")
+			collision_polygon = null
+			lander.color = Color.WHITE
+		LanderState.MORPHING:
+			collision_polygon.call_deferred("queue_free")
+			collision_polygon = null
 		
 func map(arr, cb:Callable):
 	var ret = arr.duplicate()
@@ -130,10 +135,10 @@ func _physics_process(dt:float) -> void:
 func _process_stationary(_dt:float):
 	pass
 
-func _process_preview(dt:float):
-	var current_scale = 0.05 + (float(seq_no-2)/27)
+func _process_preview(_dt:float):
+	var current_scale = 0.15 + (float(0.25))
 	lander.set_deferred("scale", Vector2(current_scale, current_scale))
-	lander.set_deferred("rotation", lander.rotation + sin(_a)*dt*current_scale)
+	lander.set_deferred("rotation", seq_no*PI*0.29+0.08+sin(_a)*0.25)
 	_a += 0.01
 
 
@@ -145,7 +150,7 @@ func setBounceBack(v:bool):
 func _process_falling(dt:float):
 	if is_bouncing_back or GlobalState.is_game_over:
 		return
-	var current_scale = polygon.scale.x - 0.5*dt
+	var current_scale = polygon.scale.x - 0.32*dt
 	
 	if GlobalState.is_tweening_planet:
 		current_scale = polygon.scale.x + 0.75*dt
