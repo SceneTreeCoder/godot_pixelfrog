@@ -10,12 +10,16 @@ const R = 420.0
 const NPOINTS = 8
 const POINTSROTATE = NPOINTS - 1
 
+const MAX_SHAPES_PER_STACK := 6
 const SPAWN_DELAY:float = 3.5
 
 var stationary_landers_container: Node2D
 var moving_landers_container: Node2D
 var total_move := 0
 var canvas:CanvasLayer;
+
+var _seed := 0
+
 var paused:bool = false:
 	set(v):
 		GlobalState.paused = v
@@ -82,30 +86,48 @@ func timeout():
 	tween.play()
 
 func _ready() -> void:
-	var planet_container: Node2D = Node2D.new()
-	var poly = Polygon2D.new()
-	var harmonics = Harmonics.generate_harmonic_properties(20)
-	poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 110)
-	planet_container.add_child(poly)
-	poly = Polygon2D.new()
-	poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 90)
-	poly.color = Color.LIGHT_GRAY
-	planet_container.add_child(poly)
-	add_child(planet_container)
-	var tween:Tween = planet_container.create_tween()
-	var fCbFinished = func():		
-		var new_scale = Vector2.ONE
-		if planet_container.scale.x<=0.99:
-			new_scale = new_scale * 1.05		
-		tween.stop()		
-		tween.tween_property(planet_container,"scale", new_scale, 1)
-		tween.play()
 	
-		
-	var newScale = planet_container.scale.x * 1.05
-	tween.tween_property(planet_container,"scale", planet_container.scale*newScale,1)	
-	tween.play()
-	tween.finished.connect(fCbFinished)
+	var gi = GameInput.instance;
+	if not gi.is_inside_tree():		
+		get_parent().add_child.call_deferred(gi)
+		gi.input = PlayerInputProvider.new()
+	
+	if _seed == 0:
+		_seed = 1906948001 #randi()
+	
+	seed(_seed)
+	
+	if gi.start_t == 0:
+		gi.start_t = Time.get_unix_time_from_system()
+	
+	gi.on_message.connect(_process_input)
+	var planet_instance = planet.instantiate()
+	add_child(planet_instance)
+	
+	#var planet_container: Node2D = Node2D.new()
+	#var poly = Polygon2D.new()
+	#var harmonics = Harmonics.generate_harmonic_properties(20)
+	#poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 110)
+	#planet_container.add_child(poly)
+	#poly = Polygon2D.new()
+	#poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 90)
+	#poly.color = Color.LIGHT_GRAY
+	#planet_container.add_child(poly)
+	#add_child(planet_container)
+	##var tween:Tween = planet_container.create_tween()
+	##var fCbFinished = func():		
+		##var new_scale = Vector2.ONE
+		##if planet_container.scale.x<=0.99:
+			##new_scale = new_scale * 1.05		
+		##tween.stop()		
+		##tween.tween_property(planet_container,"scale", new_scale, 1)
+		##tween.play()
+	##
+		#
+	#var newScale = planet_container.scale.x * 1.05
+	#tween.tween_property(planet_container,"scale", planet_container.scale*newScale,1)	
+	#tween.play()
+	#tween.finished.connect(fCbFinished)
 	timer = Timer.new()
 	add_child(timer)
 	timer.autostart = true
@@ -145,53 +167,24 @@ func _ready() -> void:
 	
 	add_child(canvas)
 	
+	var ww:= 800.0
+	var hh:= 200.0
+	var inner = HudPanel.new(ww,hh, Color.BLACK)
+	var outer = HudPanel.new(ww*1.1,hh*1.2,Color.BROWN)
 	
+	#add_child(outer)
+	#add_child(inner)
+	
+	
+	inner.position += Vector2(ww*0.1 + hh*0.05,hh*0.1)
+	
+	inner.position += Vector2(-250,-250)
+	outer.position += Vector2(-250,-250)
 	_spawn_lander()
 
 func _process(dt: float) -> void:
-	
-	if Input.is_action_just_pressed("action"):
-		paused = !paused;
-	
-	if GlobalState.is_game_over:
-		if Input.is_action_just_pressed("action"):
-			var res = load("res://scenes/game.tscn")
-			var parent = get_parent()
-			var gs:GlobalState = GlobalState.instance;
-			for c in gs.next_color_changed.get_connections():
-				gs.next_color_changed.disconnect(c["callable"])
-			
-			
-			queue_free()
-			var timergs := Timer.new()
-			timergs.one_shot = true
-			var resetf = func():
-				GlobalState.reset()
-				parent.add_child(res.instantiate())
-			
-			timergs.timeout.connect(resetf.bind())
-			parent.add_child(timergs)
-			timergs.start(0.1)
-			
-		return
-		
 	if paused:
-		return
-	
-	var move = 0
-	if Input.is_action_just_pressed("ui_left"):
-		move = -1
-	if Input.is_action_just_pressed("ui_right"):
-		move = 1
-	
-	if move == 0:
-		if Input.is_action_just_pressed("ui_up"):
-			move = -1
-		if Input.is_action_just_pressed("ui_down"):
-			move = 1
-	move_direction = move
-	total_move+= move
-	
+		return	
 	seconds_from_last_spawn+=dt
 	
 	var part_time = SPAWN_AFTER_SECONDS / NPOINTS
@@ -201,6 +194,59 @@ func _process(dt: float) -> void:
 	
 	if seconds_from_last_spawn >= SPAWN_AFTER_SECONDS and landers.size() <3:
 		_spawn_lander()
+
+func _process_input(...messages:Array):
+	
+	var move := 0
+	for message in messages:
+		var m:Message=message
+		
+		match(m.type):
+			Message.MessageType.ACTION_KEY_PRESS:				
+				match(m.params['name']):
+					"ui_right":
+						move += 1
+					"ui_down":
+						move += 1
+					"ui_left":
+						move -= 1
+					"ui_up":
+						move -= 1
+					"action":
+						if GlobalState.is_game_over:
+							paused = false
+							var res = load("res://scenes/game.tscn")
+							var parent = get_parent()
+							var gs:GlobalState = GlobalState.instance;
+							for c in gs.next_color_changed.get_connections():
+								gs.next_color_changed.disconnect(c["callable"])
+							
+							
+							queue_free()
+							var timergs := Timer.new()
+							timergs.one_shot = true
+							var resetf = func():
+								GlobalState.reset()
+								parent.add_child(res.instantiate())
+								if (GameInput.instance.messages.size()>0):
+									GameInput.instance.replay ()
+								else:
+									GameInput.instance.record ()
+							
+							timergs.timeout.connect(resetf.bind())
+							parent.add_child(timergs)
+							timergs.start(0.1)
+						else:
+							paused = !paused;
+	
+							
+					_:
+						print (m)
+			_:
+				print (m)
+	if GlobalState.is_game_over or paused:
+		return
+	total_move += move
 
 func _on_landers_collide_area(lander:Lander):
 	
@@ -227,7 +273,7 @@ func _add_to_stack(lander:Lander):
 		return a._stack_idx == idx\
 	).size()
 	
-	if on_this_stack and on_this_stack > 7:
+	if on_this_stack and on_this_stack > MAX_SHAPES_PER_STACK:
 		show_game_over()
 	
 	lander.landed = true
@@ -304,7 +350,9 @@ func _on_lander_hit_planet(lander:Lander):
 	_spawn_lander()
 
 func show_game_over() -> void:
-	
+	if GlobalState.is_game_over:
+		return
+			
 	GlobalState.is_game_over = true
 	var panel = Panel.new()
 	

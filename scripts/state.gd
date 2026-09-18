@@ -23,6 +23,7 @@ static var instance:
 		pass
 
 static func reset():
+	
 	_instance.queue_free()
 	_instance = GlobalState.new()
 	colors_queue = []

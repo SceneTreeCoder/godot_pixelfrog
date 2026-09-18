@@ -124,6 +124,10 @@ func _hit_other(_arr:Area2D, cb:Callable):
 	cb.call(self)
 
 func _physics_process(dt:float) -> void:
+	if paused:
+		return
+	if GlobalState.is_game_over:
+		return
 	match (state):
 		LanderState.FALLING:
 			_process_falling(dt)
