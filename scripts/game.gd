@@ -98,7 +98,7 @@ func _ready() -> void:
 	seed(_seed)
 	
 	if gi.start_t == 0:
-		gi.start_t = Time.get_unix_time_from_system()
+		gi.start_t = Time.get_ticks_usec()
 	
 	gi.on_message.connect(_process_input)
 	var planet_instance = planet.instantiate()
@@ -212,6 +212,8 @@ func _process_input(...messages:Array):
 						move -= 1
 					"ui_up":
 						move -= 1
+					"escape":
+						show_game_over()
 					"action":
 						if GlobalState.is_game_over:
 							paused = false

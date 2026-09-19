@@ -13,6 +13,7 @@ func _input(event: InputEvent) -> void:
 		ui_up = "ui_left",
 		ui_down = "ui_right",
 		action = "action",
+		escape = "escape",
 	}
 	for k in inputMap.keys():
 		if event.is_action_pressed(k):

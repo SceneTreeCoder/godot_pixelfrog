@@ -19,5 +19,6 @@ var seq_no:int:
 		pass
 
 func _to_string() -> String:
-	var s := "%s:[%d] Type: %s, %s"
-	return s % [Time.get_time_string_from_unix_time(timestamp), seq_no, str(MessageType.keys()[type]), str(params)]
+	var s := "%d:[%d] Type: %s, %s"
+	
+	return s % [timestamp, seq_no, str(MessageType.keys()[type]), str(params)]

@@ -17,6 +17,7 @@ var messages:Array[Message]
 var playback_queue:Array[Message]
 var start_t := 0
 var playback_start_t := 0
+var last_t :int = 0
 static var _instance:GameInput;
 static var instance:GameInput:
 	get:
@@ -40,7 +41,7 @@ func replay():
 func record():
 	playback_queue.clear()
 	clear()
-	start_t = Time.get_unix_time_from_system()
+	start_t = Time.get_ticks_usec()
 	_input.queue_free()
 	_input = null
 	_input = PlayerInputProvider.new()
@@ -50,12 +51,21 @@ func clear():
 	messages.clear()
 	
 static func on_message_received(message:Message):	
-	print (message)
-	instance.on_message.emit(message)
+	
 	if instance.playback_queue.size() > 0:
+		print (message)
+		instance.on_message.emit(message)
 		return
-	message.timestamp = Time.get_unix_time_from_system()
-	instance.messages.append(message)
+	else:
+		var messages = instance.messages
+		if messages.size() == 0:
+			message.timestamp = Time.get_ticks_usec() - instance.start_t 
+		else:
+			message.timestamp = Time.get_ticks_usec () - instance.last_t
+		instance.last_t = Time.get_ticks_usec()
+		print (message)
+		instance.on_message.emit(message)
+		instance.messages.append(message)
 	
 
 static func _connect (cb:Callable):
