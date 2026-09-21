@@ -1,5 +1,5 @@
 extends Node2D
-
+class_name Game
 const planet = preload("res://scenes/planet.tscn")
 
 var seconds_from_last_spawn := 0.0
@@ -45,19 +45,18 @@ var move_direction: int
 var running_out_tweens_count = 0
 var was_combo = false
 
-func clear_removed_landers():
-	pass
+var lbl_second:Label
+var lbl_mode: Label
+var lbl_press_to_play:Label
+var time_start:int
+
 
 func _move_finished():
 	GlobalState.is_tweening_planet = false
 	if running_out_tweens_count > 0:
 		return
-	clear_removed_landers()
 	
-			
 	for lander in landers:
-		if not lander is Lander:
-			continue
 		if stationary_landers.find_custom(func(v): return v and v is Lander and lander.area.overlaps_area(v.area)) != -1:
 			var tween = lander.create_tween()
 			lander.setBounceBack(true)
@@ -67,6 +66,16 @@ func _move_finished():
 			return
 
 func timeout():
+	
+	var ticks:int = Time.get_unix_time_from_system() - time_start
+	lbl_second.text = Time.get_time_string_from_unix_time(ticks)
+	var is_playback_mode = GameInput.instance.playback_queue.size()>0
+	if is_playback_mode:
+		lbl_mode.text = _spread("demo mode")
+		lbl_press_to_play.text = "CLICK to play"
+	else:
+		lbl_mode.text = ""
+		lbl_press_to_play.text = _spread("SPACE PAUSES")
 	if GlobalState.is_tweening_planet:
 		return
 	
@@ -85,12 +94,67 @@ func timeout():
 	tween.finished.connect(_move_finished)
 	tween.play()
 
+
+func create_label() -> Label:
+	var lbl:Label
+	lbl = Label.new()
+	lbl.position = Vector2.ONE*8
+	lbl.text = "%s:%s" % [str(0).pad_zeros(2),str(2).pad_zeros(2)]
+	lbl.add_theme_font_size_override("font_size", 64)
+	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	return lbl
+
+func _spread(s:String) -> String:
+	return Array(s.split("",true)).reduce(func(v:String,p:String):return v.to_upper() + " " + p.to_upper(),"")
+
 func _ready() -> void:
+	time_start = Time.get_unix_time_from_system()
+	var c = CanvasLayer.new()
+	canvas = c
+	add_child(c)
+	
+	#var panel:= Panel.new()
+	#panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl_second = create_label()
+	
+	#c.add_child(panel)
+	lbl_mode = create_label()
+	
+	lbl_mode.text =  _spread("DEMO_MODE")
+	lbl_press_to_play = create_label()
+	var container := VBoxContainer.new()
+	container.add_child(lbl_mode)
+	lbl_press_to_play.text = _spread("click to play")
+	container.add_child(lbl_press_to_play)
+	container.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE,Control.PRESET_MODE_KEEP_SIZE, 20)
+	var horizontal:= HBoxContainer.new()
+	
+	
+	horizontal.add_child(container)
+	horizontal.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	horizontal.position.y -= 220
+	horizontal.position.x -= 740
+	
+	c.add_child(horizontal)
+	var lbl_time:= create_label()
+	lbl_time.text = _spread("  Time: ")
+	horizontal= HBoxContainer.new()
+	horizontal.add_child(lbl_time)
+	horizontal.add_child(lbl_second)
+	horizontal.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	horizontal.position.y -= 160
+	c.add_child(horizontal)
 	
 	var gi = GameInput.instance;
 	if not gi.is_inside_tree():		
 		get_parent().add_child.call_deferred(gi)
 		gi.input = PlayerInputProvider.new()
+		var r:JSON = load("res://assets/demomode_easy.json");
+		
+		gi.load_from_json_object(r.data["replay_data"])
 	
 	if _seed == 0:
 		_seed = 1906948001 #randi()
@@ -104,30 +168,6 @@ func _ready() -> void:
 	var planet_instance = planet.instantiate()
 	add_child(planet_instance)
 	
-	#var planet_container: Node2D = Node2D.new()
-	#var poly = Polygon2D.new()
-	#var harmonics = Harmonics.generate_harmonic_properties(20)
-	#poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 110)
-	#planet_container.add_child(poly)
-	#poly = Polygon2D.new()
-	#poly.polygon = Harmonics.generate_organic_shape_points(harmonics, 90)
-	#poly.color = Color.LIGHT_GRAY
-	#planet_container.add_child(poly)
-	#add_child(planet_container)
-	##var tween:Tween = planet_container.create_tween()
-	##var fCbFinished = func():		
-		##var new_scale = Vector2.ONE
-		##if planet_container.scale.x<=0.99:
-			##new_scale = new_scale * 1.05		
-		##tween.stop()		
-		##tween.tween_property(planet_container,"scale", new_scale, 1)
-		##tween.play()
-	##
-		#
-	#var newScale = planet_container.scale.x * 1.05
-	#tween.tween_property(planet_container,"scale", planet_container.scale*newScale,1)	
-	#tween.play()
-	#tween.finished.connect(fCbFinished)
 	timer = Timer.new()
 	add_child(timer)
 	timer.autostart = true
@@ -139,33 +179,30 @@ func _ready() -> void:
 	moving_landers_container = Node2D.new()
 	add_child(moving_landers_container)
 	
-	canvas = CanvasLayer.new()	
 	var n_segments = NPOINTS
-	next_color_lander.resize(GlobalState.COLORS_QUEUE_SIZE*n_segments)
+	next_color_lander.resize(NPOINTS)
 	
 	for i in range(next_color_lander.size()):
-		var lander = Lander.new(func(_lander): pass, 0.01 + float(i)/GlobalState.COLORS_QUEUE_SIZE*PI*2.0)
+		var lander = Lander.new(func(_lander): pass, i)
 		lander.state = Lander.LanderState.PREVIEW
-		lander.position = Vector2(320,320)
 		next_color_lander[i] = lander
-		canvas.add_child(lander)
+		add_child(lander)
 	
-	var on_color_change = func (colors):
+	var on_color_change = func (colors, indexes):
 		if GlobalState.in_on_color_chabge:
 			return
 		GlobalState.in_on_color_chabge = true
-		
-		for j in range(GlobalState.COLORS_QUEUE_SIZE):
-			for p in range(n_segments):
-				next_color_lander[j*n_segments+p-1].tween_color_to = colors[j]
+		for p in range(n_segments):
+			next_color_lander[p].tween_color_to = Color.WHITE
+			next_color_lander[p].tween_color_to.a = 0
+
+		next_color_lander[indexes[0]].tween_color_to = colors[0]
 		
 		GlobalState.in_on_color_chabge = false
 		
 	
 	GlobalState.instance.next_color_changed.connect(on_color_change.bind())
 	
-	
-	add_child(canvas)
 	
 	var ww:= 800.0
 	var hh:= 200.0
@@ -190,7 +227,7 @@ func _process(dt: float) -> void:
 	var part_time = SPAWN_AFTER_SECONDS / NPOINTS
 	
 	for i in range(0, NPOINTS):
-		next_color_lander[i].visible = seconds_from_last_spawn >= part_time*float(i)
+		next_color_lander[i].modulate.a = seconds_from_last_spawn / SPAWN_AFTER_SECONDS
 	
 	if seconds_from_last_spawn >= SPAWN_AFTER_SECONDS and landers.size() <3:
 		_spawn_lander()
@@ -243,9 +280,9 @@ func _process_input(...messages:Array):
 	
 							
 					_:
-						print (m)
+						pass
 			_:
-				print (m)
+				pass
 	if GlobalState.is_game_over or paused:
 		return
 	total_move += move

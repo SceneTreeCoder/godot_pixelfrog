@@ -57,18 +57,22 @@ var tween_color_to:Color:
 		t.play()
 		_tween_color_to = c
 
-func _init(cb:Callable = func(_lander): pass, p_start:float = 0.0):
+func _init(cb:Callable = func(_lander): pass, p_start:int = -1):
 	_seq_no += 1
 	seq_no = _seq_no
 	lander = Polygon2D.new()
 	var sizes:Array[float] = [PI*0.25, PI*0.5, PI*0.75]
 	var size = randi_range(0, 0);
 	var arc = sizes[size]
-	var start = randi_range(0, NPOINTS);
+	var params = GlobalState.pick_color_and_r_idx()
+	var start = params[1];
+	
+
+
+	if p_start != -1:
+		start = p_start
 	_rotation_idx = start
 	var a = float(start) * PI * 2.0 / float(NPOINTS)
-	if p_start != 0:
-		a = p_start
 	_a = a
 	_stack_idx = -1
 	
@@ -87,7 +91,7 @@ func _init(cb:Callable = func(_lander): pass, p_start:float = 0.0):
 		return points_inner
 	
 	lander.polygon = calc.call(R, R*1.1+2)
-	lander.color = GlobalState.pick_color()
+	lander.color = params[0]
 	area = Area2D.new()
 	area.monitoring = true
 	
@@ -140,11 +144,7 @@ func _process_stationary(_dt:float):
 	pass
 
 func _process_preview(_dt:float):
-	var current_scale = 0.15 + (float(0.25))
-	lander.set_deferred("scale", Vector2(current_scale, current_scale))
-	lander.set_deferred("rotation", seq_no*PI*0.29+0.08+sin(_a)*0.25)
-	_a += 0.01
-
+	pass
 
 func setBounceBack(v:bool):
 	area.monitoring = !v
@@ -157,7 +157,7 @@ func _process_falling(dt:float):
 	var current_scale = polygon.scale.x - 0.32*dt
 	
 	if GlobalState.is_tweening_planet:
-		current_scale = polygon.scale.x + 0.75*dt
+		current_scale = polygon.scale.x + 0.1*dt
 	var currentR = R * current_scale
 	polygon.set_deferred("scale", Vector2(current_scale, current_scale))
 	var f = func(v):
